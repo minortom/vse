@@ -572,3 +572,14 @@ Truman State University
 100 E. Normal St., Kirksville, MO, 63501
 decock@truman.edu
 
+   Model       Max Error        RMSE    
+------------ ------------- -------------
+Linear model 399262.890639 39678.9384637
+
+  Model      Max Error       RMSE    
+------------ ------------ ------------
+Linear model 584461.95703 192762.24153
+
+   Model       Max Error        RMSE    
+------------ ------------- -------------
+Linear model 577032.391579 192495.283953
