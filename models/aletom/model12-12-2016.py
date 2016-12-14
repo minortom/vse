@@ -2,8 +2,8 @@
 import numpy as np
 import pandas as pd
 
-train = pd.read_csv('../data/train.csv', na_values=['#NAME?'])
-test = pd.read_csv('../data/test.csv', na_values=['#NAME?'])
+train = pd.read_csv('../../data/train.csv', na_values=['#NAME?'])
+test = pd.read_csv('../../data/test.csv', na_values=['#NAME?'])
 yy = test
 y = test.SalePrice
 n = train.SalePrice
@@ -86,6 +86,8 @@ colnames_selected = [train.columns[i] for i in indices_selected]
 
 colnames_selected.remove('SaleType_CWD_SaleCondition_Abnorml')
 colnames_selected.remove('SaleType_CWD_SaleCondition_Family')
+colnames_selected.remove('SaleType_ConLD_SaleCondition_Partial')
+
 
 X_train_selected = train[colnames_selected]
 X_test_selected = test[colnames_selected]

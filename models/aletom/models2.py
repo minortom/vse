@@ -2,8 +2,8 @@
 import numpy as np
 import pandas as pd
 
-df = pd.read_csv('data/train.csv', na_values=['#NAME?'])
-tf = pd.read_csv('data/test.csv', na_values=['#NAME?'])
+df = pd.read_csv('../../data/train.csv', na_values=['#NAME?'])
+tf = pd.read_csv('../../data/test.csv', na_values=['#NAME?'])
 # Assign X as a DataFrame of features and y as a Series of the outcome variable
 k = tf.SalePrice
 X = df.drop('SalePrice', 1)

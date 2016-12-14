@@ -12,8 +12,8 @@ import graphlab
 import matplotlib.pyplot as plt
 
 # Load all data sources
-trainData = graphlab.SFrame('data/train.csv')
-testData = graphlab.SFrame('data/test.csv')
+trainData = graphlab.SFrame('../../data/train.csv')
+testData = graphlab.SFrame('../../data/test.csv')
 
 # trainData.print_rows(num_rows=10, num_columns=81)
 
