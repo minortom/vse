@@ -57,4 +57,33 @@ X = pd.DataFrame(data=imp.transform(X) , columns=X.columns)
 print X.isnull().sum().sort_values(ascending=False).head()
 
 #### Remove and detect outliers
-#http://scikit-learn.org/stable/modules/outlier_detection.html
+# Removed four data entries
+
+
+###############################
+# trying out different models #
+###############################
+
+rs = 1
+ests = [ linear_model.LinearRegression(), linear_model.Ridge(),
+        linear_model.Lasso(), linear_model.ElasticNet(),
+        linear_model.BayesianRidge(), linear_model.OrthogonalMatchingPursuit() ]
+ests_labels = np.array(['Linear', 'Ridge', 'Lasso', 'ElasticNet', 'BayesRidge', 'OMP'])
+errvals = np.array([])
+
+X_train, X_test, y_train, y_test = train_test_split(X.drop(['SalePrice'], axis=1),
+                                                    X.SalePrice, test_size=0.2, random_state=100)
+
+for e in ests:
+    e.fit(X_train, y_train)
+    this_err = metrics.median_absolute_error(y_test, e.predict(X_test))
+    #print "got error %0.2f" % this_err
+    errvals = np.append(errvals, this_err)
+
+pos = np.arange(errvals.shape[0])
+srt = np.argsort(errvals)
+plt.figure(figsize=(7,5))
+plt.bar(pos, errvals[srt], align='center')
+plt.xticks(pos, ests_labels[srt])
+plt.xlabel('Estimator')
+plt.ylabel('Median Absolute Error')
