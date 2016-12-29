@@ -14,6 +14,12 @@ from sklearn.metrics import accuracy_score
 # read the file into a dataframe
 X = pd.read_csv('data/trainremake.csv')
 
+Y = pd.read_csv('data/testremake.csv')
+
+X['Type'] = 0 #Create a flag for Train and Test Data set
+Y['Type'] = 1
+
+fullData = pd.concat([X,Y],axis=0) #Combined both Train and Test Data set
 #######################
 # basic data cleaning #
 #######################
@@ -21,15 +27,15 @@ X = pd.read_csv('data/trainremake.csv')
 #### Decide which categorical variables you want to use in model
 # Make an array of it
 var = []
-for col_name in X.columns:
-    if X[col_name].dtypes == 'object':
-        unique_cat = len(X[col_name].unique())
+for col_name in fullData.columns:
+    if fullData[col_name].dtypes == 'object':
+        unique_cat = len(fullData[col_name].unique())
         var.append(col_name)
         # print("Feature '{col_name}' has {unique_cat} unique categories".format(col_name=col_name, unique_cat=unique_cat))
 
 print var
 # Create a list of features to dummy
-todummy_list = ['MSZoning', 'Street', 'Alley', 'LotShape', 'LandContour', 'Utilities', 'LotConfig', 'LandSlope', 'Neighborhood', 'Condition1', 'Condition2', 'BldgType', 'HouseStyle', 'RoofStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd', 'MasVnrType', 'ExterQual', 'ExterCond', 'Foundation', 'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2', 'Heating', 'HeatingQC', 'CentralAir', 'Electrical', 'KitchenQual', 'Functional', 'FireplaceQu', 'GarageType', 'GarageFinish', 'GarageQual', 'GarageCond', 'PavedDrive', 'PoolQC', 'Fence', 'MiscFeature', 'SaleType', 'SaleCondition']
+todummy_list = ['Alley', 'BldgType', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2', 'BsmtQual', 'CentralAir', 'Condition1', 'Condition2', 'Electrical', 'ExterCond', 'ExterQual', 'Exterior1st', 'Exterior2nd', 'Fence', 'FireplaceQu', 'Foundation', 'Functional', 'GarageCond', 'GarageFinish', 'GarageQual', 'GarageType', 'Heating', 'HeatingQC', 'HouseStyle', 'KitchenQual', 'LandContour', 'LandSlope', 'LotConfig', 'LotShape', 'MSZoning', 'MasVnrType', 'MiscFeature', 'Neighborhood', 'PavedDrive', 'PoolQC', 'RoofMatl', 'RoofStyle', 'SaleCondition', 'SaleType', 'Street', 'Utilities']
 
 
 # Function to dummy all the categorical variables used for modeling
@@ -41,7 +47,7 @@ def dummy_df(df, todummy_list):
     return df
 
 
-X = dummy_df(X, todummy_list)
+fullData = dummy_df(fullData, todummy_list)
 
 
 #### Handling missing data
@@ -55,11 +61,11 @@ X = dummy_df(X, todummy_list)
 from sklearn.preprocessing import Imputer
 
 imp = Imputer(missing_values='NaN', strategy='median', axis=0)
-imp.fit(X)
-X = pd.DataFrame(data=imp.transform(X) , columns=X.columns)
+imp.fit(fullData)
+fullData = pd.DataFrame(data=imp.transform(fullData) , columns=fullData.columns)
 
 # Now check again to see if you still have missing data
-print X.isnull().sum().sort_values(ascending=False).head()
+print fullData.isnull().sum().sort_values(ascending=False).head()
 
 #### Remove and detect outliers
 # Removed four data entries
@@ -75,9 +81,13 @@ ests = [ linear_model.LinearRegression(), linear_model.Ridge(),
         linear_model.BayesianRidge(), linear_model.OrthogonalMatchingPursuit() ]
 ests_labels = np.array(['Linear', 'Ridge', 'Lasso', 'ElasticNet', 'BayesRidge', 'OMP'])
 errvals = np.array([])
+train=fullData[fullData['Type']==0]
+test=fullData[fullData['Type']==1]
 
-X_train, X_test, y_train, y_test = train_test_split(X.drop(['SalePrice'], axis=1),
-                                                    X.SalePrice, test_size=0.2, random_state=20)
+
+X_train, X_test, y_train, y_test = train_test_split(train.drop(['SalePrice'], axis=1),
+                                                    train.SalePrice, test_size=0.2, random_state=20)
+
 
 for e in ests:
     e.fit(X_train, y_train)
@@ -94,20 +104,20 @@ plt.bar(pos, errvals[srt], align='center')
 plt.xticks(pos, ests_labels[srt])
 plt.xlabel('Estimator')
 plt.ylabel('Median Absolute Error')
-plt.show()
+# plt.show()
 
 
 ##################
 # model ensemble #
 ##################
 
-n_est = 500
+n_est = 800
 
 tuned_parameters = {
     "n_estimators": [ n_est ],
-    "max_depth" : [ 4 ],
-    "learning_rate": [ 0.01 ],
-    "min_samples_split" : [ 2 ],
+    "max_depth" : [ 8 ],
+    "learning_rate": [ 0.001 ],
+    "min_samples_split" : [ 3 ],
     "loss" : [ 'ls', 'lad' ]
 }
 
@@ -125,8 +135,7 @@ test_score = np.zeros(n_est, dtype=np.float64)
 train_score = best.train_score_
 for i, y_pred in enumerate(best.staged_predict(X_test)):
     test_score[i] = best.loss_(y_test, y_pred)
-    accuracy = accuracy_score(y_test, predictions)
-	print("Accuracy: %.2f%%" % (accuracy * 100.0))
+
 plt.figure(figsize=(12, 6))
 plt.subplot(1, 2, 1)
 plt.plot(np.arange(n_est), train_score, 'darkblue', label='Training Set Error')
@@ -138,11 +147,23 @@ plt.show()
 
 
 feature_importance = clf.best_estimator_.feature_importances_
+print "feature_importance"
+print feature_importance
 feature_importance = 100.0 * (feature_importance / feature_importance.max())
 sorted_idx = np.argsort(feature_importance)
+
+print "sorted_idx"
+print sorted_idx
+
 pos = np.arange(sorted_idx.shape[0]) + 2
 pvals = feature_importance[sorted_idx]
+print "pvals"
+print pvals
+
 pcols = X_train.columns[sorted_idx]
+print "pcols"
+print pcols
+
 plt.figure(figsize=(32,48))
 plt.barh(pos, pvals, align='center')
 plt.yticks(pos, pcols)
@@ -150,18 +171,15 @@ plt.xlabel('Relative Importance')
 plt.title('Variable Importance')
 plt.show()
 
-
-
-# test = pd.read_csv('data/testremake.csv')
-# import csv
-# with open('output.csv', 'w') as outcsv: 
-#     writer = csv.writer(outcsv, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
-#     writer.writerow(['Id', 'SalePrice'])
-#     dataPrediction = clf.predict(test)
-#     print dataPrediction
-#     for i in xrange(0, len(test)):
-#         dataId = test['Id'][i]
-#         if dataPrediction[i] < 0:
-#             writer.writerow([dataId, 0])
-#         else:
-#             writer.writerow([dataId, dataPrediction[i]])
+X_train, X_test, y_train, y_test = train_test_split(test.drop(['SalePrice'], axis=1),
+                                                    test.SalePrice, test_size=0, random_state=0)
+# X_train = X_train[colnames_selected]
+Y = pd.read_csv('data/testremake.csv')
+import csv
+with open('output.csv', 'w') as outcsv: 
+    writer = csv.writer(outcsv, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+    writer.writerow(['Id', 'SalePrice'])
+    dataPrediction = clf.predict(X_train)
+    for i in xrange(0, len(Y)):
+        dataId = Y['Id'][i]
+        writer.writerow([dataId, dataPrediction[i]])
