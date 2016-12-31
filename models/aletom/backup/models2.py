@@ -2,21 +2,23 @@
 import numpy as np
 import pandas as pd
 
-df = pd.read_csv('../../data/train.csv', na_values=['#NAME?'])
-tf = pd.read_csv('../../data/test.csv', na_values=['#NAME?'])
-# Assign X as a DataFrame of features and y as a Series of the outcome variable
-k = tf.SalePrice
-X = df.drop('SalePrice', 1)
-t = tf.drop('SalePrice', 1)
-y = df.SalePrice
+train = pd.read_csv('../data/trainremake.csv', na_values=['#NAME?'])
+test = pd.read_csv('../data/testremake.csv', na_values=['#NAME?'])
 
+train['Type'] = 0 #Create a flag for Train and Test Data set
+test['Type'] = 1
 
+fullData = pd.concat([train,test],axis=0) #Combined both Train and Test Data set
+
+var = []
 # Decide which categorical variables you want to use in model
-for col_name in X.columns:
-    if X[col_name].dtypes == 'object':
-        unique_cat = len(X[col_name].unique())
+for col_name in fullData.columns:
+    if fullData[col_name].dtypes == 'object':
+        unique_cat = len(fullData[col_name].unique())
+        var.append(col_name)
         # print("Feature '{col_name}' has {unique_cat} unique categories".format(col_name=col_name, unique_cat=unique_cat))
-        
+print var
+
 # Create a list of features to dummy
 todummy_list = ['MSZoning', 'Street', 'Alley', 'LotShape', 'LandContour', 'Utilities', 'LotConfig', 'LandSlope', 'Neighborhood', 'Condition1', 'Condition2', 'BldgType', 'HouseStyle', 'RoofStyle', 'RoofMatl', 'Exterior1st', 'Exterior2nd', 'MasVnrType', 'ExterQual', 'ExterCond', 'Foundation', 'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2', 'Heating', 'HeatingQC', 'CentralAir', 'Electrical', 'KitchenQual', 'Functional', 'FireplaceQu', 'GarageType', 'GarageFinish', 'GarageQual', 'GarageCond', 'PavedDrive', 'PoolQC', 'Fence', 'MiscFeature', 'SaleType', 'SaleCondition']
 
@@ -28,19 +30,14 @@ def dummy_df(df, todummy_list):
         df = pd.concat([df, dummies], axis=1)
     return df
 
-X = dummy_df(X, todummy_list)
-t = dummy_df(t, todummy_list)
+fullData = dummy_df(fullData, todummy_list)
 
-# Impute missing values using Imputer in sklearn.preprocessing
+#Imputer in sklearn.preprocessing
 from sklearn.preprocessing import Imputer
 
 imp = Imputer(missing_values='NaN', strategy='median', axis=0)
-imp.fit(X)
-X = pd.DataFrame(data=imp.transform(X) , columns=X.columns)
-
-imps = Imputer(missing_values='NaN', strategy='median', axis=0)
-imps.fit(t)
-t = pd.DataFrame(data=imps.transform(t) , columns=t.columns)
+imp.fit(fullData)
+fullData = pd.DataFrame(data=imp.transform(fullData) , columns=fullData.columns)
 
 # Use PolynomialFeatures in sklearn.preprocessing to create two-way interactions for all features
 from itertools import combinations
@@ -64,12 +61,16 @@ def add_interactions(df):
     return df
 
     
-X = add_interactions(X)
-t = add_interactions(t)
+fullData = add_interactions(fullData)
+
     # Use train_test_split in sklearn.cross_validation to split data into train and test sets
 from sklearn.cross_validation import train_test_split
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.70, random_state=1)
+train=fullData[fullData['Type']==0]
+test=fullData[fullData['Type']==1]
+
+X_train, X_test, y_train, y_test = train_test_split(train.drop(['SalePrice'], axis=1),
+                                                    train.SalePrice, test_size=0.2, random_state=20)
 
 
 # Such a large set of features can cause overfitting and also slow computing
@@ -79,10 +80,10 @@ import sklearn.feature_selection
 select = sklearn.feature_selection.SelectKBest(k=20)
 selected_features = select.fit(X_train, y_train)
 indices_selected = selected_features.get_support(indices=True)
-colnames_selected = [X.columns[i] for i in indices_selected]
+colnames_selected = [fullData.columns[i] for i in indices_selected]
 
-X_train_selected = X_train[colnames_selected]
-X_test_selected = X_test[colnames_selected]
+X_train = X_train[colnames_selected]
+X_test = X_test[colnames_selected]
 
 # print(colnames_selected)
 
@@ -93,42 +94,23 @@ from sklearn.metrics import roc_auc_score
 
 
 clf = LinearRegression(fit_intercept=True)
-clf.fit(X_train_selected, y_train)
-predictionData =  X_test_selected
-# print(clf.predict(predictionData))
+clf.fit(X_train, y_train)
 
 
 
-
-df_unprocessed = t
-
-# Remove non-numeric columns so model does not throw an error
-for col_name in df_unprocessed.columns:
-    if df_unprocessed[col_name].dtypes not in ['int32','int64','float32','float64']:
-        df_unprocessed = df_unprocessed.drop(col_name, 1)
-
-# Split into features and outcomes
-X_unprocessed = df_unprocessed
-y_unprocessed = k
-
-
-# Split unprocessed data into train and test set
-# Build model and assess performance
-X_train_unprocessed, X_test_unprocessed, y_train, y_test = train_test_split(
-    X_unprocessed, y_unprocessed, train_size=1, random_state=1)
-
-
-predictionData =  X_test_unprocessed[colnames_selected]
+X_train, X_test, y_train, y_test = train_test_split(test.drop(['SalePrice'], axis=1),
+                                                    test.SalePrice, test_size=0, random_state=0)
+X_train = X_train[colnames_selected]
+X_test = X_test[colnames_selected]
+# X_train = X_train[colnames_selected]
+Y = pd.read_csv('../data/testremake.csv')
 import csv
 with open('output.csv', 'w') as outcsv: 
     writer = csv.writer(outcsv, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
     writer.writerow(['Id', 'SalePrice'])
-    dataPrediction = clf.predict(predictionData)
-    print dataPrediction
-    for i in xrange(0, len(predictionData)):
-        dataId = t['Id'][i]
-        if dataPrediction[i] < 0:
-            writer.writerow([dataId, 0])
-        else:
-            writer.writerow([dataId, dataPrediction[i]])
+    dataPrediction = clf.predict(X_train)
+    for i in xrange(0, len(Y)):
+        dataId = Y['Id'][i]
+        writer.writerow([dataId, dataPrediction[i]])
+
 
